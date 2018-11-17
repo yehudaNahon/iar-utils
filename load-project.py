@@ -2,6 +2,8 @@
 from elements import *
 import argparse
 from pathlib import Path
+from logging import error
+
 from xml.etree.ElementTree import ElementTree
 
 def build_working_tree(path: Path, to_relative):
@@ -29,6 +31,21 @@ def get_path_from_workspace(workspace: Path, path: Path):
     """
     return "$WS_DIR$\\" + str(path.relative_to(workspace))
 
+def remove_all_files_and_folders(element: Element):
+    for folder_elem in element.findall('group'):
+        ewp_root.remove(folder_elem)
+
+    for file_elem in element.findall('file'):
+        ewp_root.remove(file_elem)
+
+def strip_xml(element: Element):
+    element.tail = None
+    if element.text is not None:
+        element.text = element.text.strip()
+
+    for sub in element:
+        strip_xml(sub)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='scan the project working directory and build a matching file tree representation in the iar project configuration')
@@ -37,13 +54,21 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    root_path = Path().cwd()
-    file_tree = build_working_tree(root_path, lambda file_path: get_path_from_workspace(root_path, file_path))
-    
-    
+    ewp_file = Path(args.file)
+    if not ewp_file.exists() or ewp_file.suffix != '.ewp':
+        error(f"could not find {ewp_file}")
 
-    with open("test.xml", 'w') as f:
-        f.write(prettify(file_tree))
+    ewp_root = ElementTree(file=ewp_file).getroot()
+
+    remove_all_files_and_folders(ewp_root)
+
+    strip_xml(ewp_root)
+
+    root_path = ewp_file.parent
+    for child in build_working_tree(root_path, lambda path: get_path_from_workspace(root_path, path)):
+        ewp_root.append(child) 
+
+    ewp_file.write_text(prettify(ewp_root))
 
 
 

@@ -6,7 +6,7 @@ def prettify(elem: Element):
     """
     rough_string = tostring(elem, 'utf-8')
     reparsed = parseString(rough_string)
-    return reparsed.toprettyxml(indent="\t")
+    return reparsed.toprettyxml()
 
 class ProjectElement(Element):
     """
